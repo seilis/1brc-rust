@@ -25,10 +25,10 @@ struct Station {
 }
 
 impl Station {
-    fn new(min: f64, max: f64) -> Self {
+    fn new(value: f64) -> Self {
         Self {
-            min,
-            max,
+            min: value,
+            max: value,
             accumulated: 0.0,
             count: 0,
         }
@@ -72,7 +72,16 @@ fn process_raw_stations(input: &str) -> HashMap<String, Station> {
         let name = parts.next().unwrap();
         let value = parts.next().unwrap().parse::<f64>().unwrap();
 
-        let station = stations.entry(name.to_string()).or_insert(Station::new(value, value));
+        let station_maybe = stations.get_mut(name);
+
+        let station = if station_maybe.is_some() {
+            station_maybe.unwrap()
+        } else {
+            drop(station_maybe);
+            stations.insert(name.to_string(), Station::new(value));
+            stations.get_mut(name).unwrap()
+        };
+
         station.add_measurement(value);
     }
 

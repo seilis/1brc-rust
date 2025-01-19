@@ -129,6 +129,42 @@ If we look at the above, the main time takers can be discussed in groups:
 - Adding the measurement to a station only takes a small amount of time at less than 1%.
 - Getting the entry from a HashMap seems to be the largest amount of time at 39.48%.
 
+### Stop allocating needlessly
+
+Normally, I look for low-hanging fruit and that's often in the largest frame. When I look at the `HashMap::entry()` block one thing immediately strikes me: inside the `rustc_entry` frame, there's a call to `drop_in_place<alloc::string::String>` and it takes 4.76% of the total runtime! That's happening because we're passing in a `String` to the `HashMap::entry()` call but most of the time the string exists.
+
+This makes sense if we consider that the original 1brc problem states that there are max 10,000 stations but there are 1 billion rows and we're using this string to hold the station name. So we only need that string 0.001% of the time. Not a good trade-off.
+
+There are a couple of ways we could tackle this problem:
+
+- Keep using the `entry()` method with a `Cow`, which lets us avoid extra allocations in most places.
+- Use the `get()` method, which can take a reference to the key and only create the key when needed.
+
+While the first one is fancy, we can try the `get()` first, since it's simple.
+
+We can replace our original entry wall with this:
+```
+        let station_maybe = stations.get_mut(name);
+
+        let station = if station_maybe.is_some() {
+            station_maybe.unwrap()
+        } else {
+            drop(station_maybe);
+            stations.insert(name.to_string(), Station::new(value));
+            stations.get_mut(name).unwrap()
+        };
+```
+
+Perhaps it's not the most elegant looking code but it has the benefit of having a short path (only one hashtable lookup) when the key exists although we do it twice when the key doesn't exist.
+
+What do the timings look like now?
+
+Time (1 run): 39.7 seconds on MBP. (19% runtime reduction)
+Time (1 run): 1m11s on Threadripper. (30% runtime reduction)
+
+Woah. New flamegraph is `flamegraph_03_stop_allocating_needlessly.svg`. I only really expected that to improve performance by about 7.5%+4.76%=12%, which is respectable but we got a whopping 19% reduction in runtime on the MBP and 30% on the Threadripper! First of all, we can collect those 12% savings from the memory saved, but it looks like for `String`, the `HashMap::entry()` method is also slower than `get_mut()`.
+
+It's worth noting that `get_mut()` is still 29.6% of our runtime so it's worth continuing to dig into this, but it's a great first step.
 
 ### Notes on HW
 
