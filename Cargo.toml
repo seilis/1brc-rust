@@ -7,3 +7,4 @@ edition = "2021"
 
 [profile.release]
 debug = true
+force-frame-pointers = true
