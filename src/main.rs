@@ -1,6 +1,14 @@
 use std::env;
 use fxhash::{FxHashMap, FxBuildHasher};
 
+
+use std::path::Path;
+use std::io;
+
+// Only used in Linux. Slow in MacOS
+#[cfg(target_os = "linux")]
+use memmap2::Mmap;
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
@@ -9,13 +17,25 @@ fn main() {
         std::process::exit(1);
     }
 
-    let raw = std::fs::read_to_string(&args[1]).unwrap();
+    let raw = read_file(Path::new(&args[1])).unwrap();
 
-
-    let stations: FxHashMap<usize, Station> = process_raw_stations(&raw);
+    let stations: FxHashMap<usize, Station> = process_raw_stations(unsafe {std::str::from_utf8_unchecked(raw.as_ref())});
     print_stations(stations);
 }
 
+// Only used in Linux. Slow in MacOS
+#[cfg(target_os = "linux")]
+pub fn read_file(file: &Path) -> io::Result<Mmap> {
+    let file = std::fs::File::open(file)?;
+    let mmap = unsafe { Mmap::map(&file)? };
+    Ok(mmap)
+}
+
+// In macOS, the `read_to_string()` implementation is very fast, so just use that.
+#[cfg(target_os = "macos")]
+pub fn read_file(file: &Path) -> io::Result<String> {
+    std::fs::read_to_string(file)
+}
 
 struct Station {
     min: f64,

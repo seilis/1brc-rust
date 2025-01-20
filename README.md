@@ -195,6 +195,25 @@ At this point the `hash()` function is taking 2.7% of runtime and `HashMap::get_
 
 I also tried with a BTreeMap, but the Threadripper went back up to 1m24s. Looks like double hashing is much faster.
 
+### Memmap2
+
+Tried with `memmap2` as a memory map and it does indeed remove the `read()` call that we saw earlier, but it turns out this was fast because we only saved a tiny bit of time. Probably the kernel can mostly just set up pages as copy-on-write (or similar) for the `read()` call and so it's fairly fast.
+
+```
+openat(AT_FDCWD, "measurements.txt", O_RDONLY|O_CLOEXEC) = 3
+statx(3, "", AT_STATX_SYNC_AS_STAT|AT_EMPTY_PATH, STATX_ALL, {stx_mask=STATX_ALL|STATX_MNT_ID, stx_attributes=0, stx_mode=S_IFREG|0644, stx_size=13795310865, ...}) = 0
+mmap(NULL, 13795310865, PROT_READ, MAP_SHARED, 3, 0) = 0x7c4667600000
+close(3)
+```
+
+We do see a small amount of time spent in `from_utf8`, about 2.7%. We can remove that time by using the "unchecked" version. Normally I would say that this isn't worth it, but we do want to go as fast as possible and it's a controlled scenario here.
+
+Time (1 run): 50 seconds on MBP.
+Time (1 run): 56 seconds on Threadripper.
+
+🤯 we've strayed off the happy path, at least for the MBP. So we'll put the file-reading commands into a compile-time switch based on OS.
+
+
 ### Notes on HW
 
 - Threadripper machine has 64GB of 2133 MT/s RAM.
