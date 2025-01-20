@@ -191,7 +191,6 @@ We're now at a similar reduction in runtime for the two platforms, but the M4 CP
 
 At this point the `hash()` function is taking 2.7% of runtime and `HashMap::get_mut()` is taking 9%. There may be more gains to be made here later, but this is significantly reduced from our previous attempts. Further enhancements here won't (yet) show large runtime reductions since they're being dwarfed by the other portions.
 
-
 ### BTreeMap
 
 I also tried with a BTreeMap, but the Threadripper went back up to 1m24s. Looks like double hashing is much faster.
