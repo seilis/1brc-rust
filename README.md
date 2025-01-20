@@ -176,6 +176,25 @@ There are faster hashes that are available, including `FxHashmap`. Thankfully th
 Time (1 run): 32.6 seconds on MBP.
 Time (1 run): 1m5s on Threadripper.
 
+### Faster hash, round 2
+
+Okay so we got a decent further improvement in the runtime for our `HashMap` with FxHash but it's *still* taking 25% of the runtime and the time is still being spent in a string equivalence lookup. We need to be able to reduce that further.
+
+Now we have to be a bit careful, but the `make_hash` function is now only 2.43% of our runtime. If the time taken for the lookup is mostly comparisons, perhaps we can use a hash value itself as the key to our map. This would have the negative effect that we would be computing a double hash (one for the input string and another for the hash of the hash) but it might be an acceptable price to pay. We could also try using the hash as the key for a BTreeMap, which is not O(1) but should require only a small number of comparisons before returning the value. In order to be able to do this, we'll need to store the full string inside the Station struct so that we can access the actual names later.
+
+Time (1 run): 31 seconds on MBP. (37% runtime reduction)
+Time (1 run): 1m1 on Threadripper. (40% runtime reduction)
+
+`docs/images/flamegraph_05_fxhash_with_hash_key.svg`
+
+We're now at a similar reduction in runtime for the two platforms, but the M4 CPU exhibits much better single-threaded performance than the Threadripper.
+
+At this point the `hash()` function is taking 2.7% of runtime and `HashMap::get_mut()` is taking 9%. There may be more gains to be made here later, but this is significantly reduced from our previous attempts. Further enhancements here won't (yet) show large runtime reductions since they're being dwarfed by the other portions.
+
+
+### BTreeMap
+
+I also tried with a BTreeMap, but the Threadripper went back up to 1m24s. Looks like double hashing is much faster.
 
 ### Notes on HW
 

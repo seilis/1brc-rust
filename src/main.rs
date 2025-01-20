@@ -12,8 +12,8 @@ fn main() {
     let raw = std::fs::read_to_string(&args[1]).unwrap();
 
 
-    let stations: FxHashMap<String, Station> = process_raw_stations(&raw);
-    print_stations(&stations);
+    let stations: FxHashMap<usize, Station> = process_raw_stations(&raw);
+    print_stations(stations);
 }
 
 
@@ -22,15 +22,17 @@ struct Station {
     max: f64,
     accumulated: f64,
     count: usize,
+    pub name: String,
 }
 
 impl Station {
-    fn new(value: f64) -> Self {
+    fn new(name: String, value: f64) -> Self {
         Self {
             min: value,
             max: value,
             accumulated: 0.0,
             count: 0,
+            name,
         }
     }
 
@@ -63,7 +65,7 @@ impl std::fmt::Display for Station {
     }
 }
 
-fn process_raw_stations(input: &str) -> FxHashMap<String, Station> {
+fn process_raw_stations(input: &str) -> FxHashMap<usize, Station> {
     let mut stations = FxHashMap::with_hasher(FxBuildHasher::default());
 
     for line in input.lines() {
@@ -72,14 +74,15 @@ fn process_raw_stations(input: &str) -> FxHashMap<String, Station> {
         let name = parts.next().unwrap();
         let value = parts.next().unwrap().parse::<f64>().unwrap();
 
-        let station_maybe = stations.get_mut(name);
+        let hash = fxhash::hash(name);
+        let station_maybe = stations.get_mut(&hash);
 
         let station = if station_maybe.is_some() {
             station_maybe.unwrap()
         } else {
             drop(station_maybe);
-            stations.insert(name.to_string(), Station::new(value));
-            stations.get_mut(name).unwrap()
+            stations.insert(hash, Station::new(name.to_string() ,value));
+            stations.get_mut(&hash).unwrap()
         };
 
         station.add_measurement(value);
@@ -88,21 +91,21 @@ fn process_raw_stations(input: &str) -> FxHashMap<String, Station> {
     stations
 }
 
-fn print_stations(stations: &FxHashMap<String, Station>) {
+fn print_stations(stations: FxHashMap<usize, Station>) {
     print!("{{");
 
     // Need to print by name in alphabetical order.
-    let mut sorted_stations: Vec<(&String, &Station)> = stations.iter().collect();
-    sorted_stations.sort_by(|a, b| a.0.cmp(b.0));
+    let mut sorted_stations: Vec<Station> = stations.into_values().collect();
+    sorted_stations.sort_by(|a, b| a.name.cmp(&b.name));
 
     let mut station_iter = sorted_stations.iter();
 
     // First station doesn't have a comma before it so do it separately
     let first = station_iter.next().unwrap();
-    print!("{}={}", first.0, first.1);
+    print!("{}={}", &first.name, first);
 
-    for (name, station) in station_iter {
-        print!(", {}={}", name, station);
+    for station in station_iter {
+        print!(", {}={}", &station.name, station);
     }
     print!("}}\n");
 }
