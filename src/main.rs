@@ -92,7 +92,8 @@ fn process_raw_stations(input: &str) -> FxHashMap<usize, Station> {
         let mut parts = line.split(|c| c == ';');
 
         let name = parts.next().unwrap();
-        let value = parts.next().unwrap().parse::<f64>().unwrap();
+        //let value = parts.next().unwrap().parse::<f64>().unwrap();
+        let value = fast_float::parse(parts.next().unwrap()).unwrap();
 
         let hash = fxhash::hash(name);
         let station_maybe = stations.get_mut(&hash);
