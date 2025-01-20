@@ -166,6 +166,17 @@ Woah. New flamegraph is `flamegraph_03_stop_allocating_needlessly.svg`. I only r
 
 It's worth noting that `get_mut()` is still 29.6% of our runtime so it's worth continuing to dig into this, but it's a great first step.
 
+
+### Faster hash
+
+Okay so our `HashMap` is still too slow for our goals. If we dig into the `HashMap::get_inner_mut` calls from our previous run, we can see that `hashbrown::map::make_hash` accounts for about 12% of the total runtime, while `hashbrow::raw::RawTableInner::find_inner` is about 16% and that includes about 10.45% that is doing a string comparison during the find.
+
+There are faster hashes that are available, including `FxHashmap`. Thankfully this is a drop-in replacement for `HashMap` so we can give it a go:
+
+Time (1 run): 32.6 seconds on MBP.
+Time (1 run): 1m5s on Threadripper.
+
+
 ### Notes on HW
 
 - Threadripper machine has 64GB of 2133 MT/s RAM.

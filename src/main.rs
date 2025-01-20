@@ -1,5 +1,5 @@
 use std::env;
-use std::collections::HashMap;
+use fxhash::{FxHashMap, FxBuildHasher};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -12,7 +12,7 @@ fn main() {
     let raw = std::fs::read_to_string(&args[1]).unwrap();
 
 
-    let stations: HashMap<String, Station> = process_raw_stations(&raw);
+    let stations: FxHashMap<String, Station> = process_raw_stations(&raw);
     print_stations(&stations);
 }
 
@@ -63,8 +63,8 @@ impl std::fmt::Display for Station {
     }
 }
 
-fn process_raw_stations(input: &str) -> HashMap<String, Station> {
-    let mut stations = HashMap::new();
+fn process_raw_stations(input: &str) -> FxHashMap<String, Station> {
+    let mut stations = FxHashMap::with_hasher(FxBuildHasher::default());
 
     for line in input.lines() {
         let mut parts = line.split(|c| c == ';');
@@ -88,7 +88,7 @@ fn process_raw_stations(input: &str) -> HashMap<String, Station> {
     stations
 }
 
-fn print_stations(stations: &HashMap<String, Station>) {
+fn print_stations(stations: &FxHashMap<String, Station>) {
     print!("{{");
 
     // Need to print by name in alphabetical order.
